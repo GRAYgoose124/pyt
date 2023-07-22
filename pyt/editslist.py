@@ -46,12 +46,16 @@ class EditsList(list[Edit]):
         self.clear()
         self.extend(leven_edits(s1, s2))
 
-    def apply(self):
+    def apply(self, original: list[str] = None):
         """
         >>> apply_leven_edits("kitten", [Edit(operation='substitute', old='k', new='s', index=0), Edit(operation='substitute', old='e', new='i', index=4), Edit(operation='insert', old='', new='g', index=7)])
         'sitting'
         """
-        transformed = list(self.original)
+        if original is None:
+            transformed = list(self.original)
+        else:
+            transformed = original
+
         for edit in reversed(self):
             if edit.op == "insert":
                 transformed.insert(edit.index, edit.new)
@@ -59,14 +63,18 @@ class EditsList(list[Edit]):
                 transformed.pop(edit.index)
             elif edit.op == "substitute":
                 transformed[edit.index] = edit.new
-        return "".join(transformed)
+        return transformed
 
-    def undo(self):
+    def undo(self, original: list[str] = None):
         """
         >>> undo_leven_edits("sitting", [Edit(operation='substitute', old='k', new='s', index=0), Edit(operation='substitute', old='e', new='i', index=4), Edit(operation='insert', old='', new='g', index=7)])
         'kitten'
         """
-        transformed = list(self.original)
+        if original is None:
+            transformed = list(self.original)
+        else:
+            transformed = original
+
         for edit in reversed(self):
             if edit.op == "insert":
                 transformed.pop(edit.index - 1)
@@ -74,4 +82,4 @@ class EditsList(list[Edit]):
                 transformed.insert(edit.index, edit.old)
             elif edit.op == "substitute":
                 transformed[edit.index] = edit.old
-        return "".join(transformed)
+        return transformed

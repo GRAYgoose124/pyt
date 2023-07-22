@@ -113,7 +113,7 @@ class DeltaFile:
         self = self.build_from_final_revision_file(self.get_revision_file(last_sha))
 
         with self._actual_file.open("w") as f:
-            f.write(self.last_revision.edits.apply())
+            f.writelines(self.last_revision.edits.apply())
 
         return self
 
@@ -161,6 +161,21 @@ class DeltaFile:
                 rev,
                 f,
             )
+
+    def revisions_to_str(self, sha: str):
+        """Apply all revisions up to a certain sha"""
+
+        built_str = self.revisions[0].edits.apply()
+        for rev in self.revisions:
+            if rev.sha == sha:
+                break
+            built_str = rev.edits.apply(built_str)
+
+        return built_str
+
+    def build(self):
+        """Build the file"""
+        return self.revisions_to_str(self.current_sha)
 
     @staticmethod
     def make_sha(path: Path):
@@ -243,6 +258,8 @@ def main():
                 deltafile.current_revision_file
             ).revisions
         )
+
+        print("DeltaFile:", deltafile.build())
 
         print("\nRevert:")
         deltafile.revert(
