@@ -1,6 +1,5 @@
 import pytest
 import doctest
-import pyt.utils
 import pyt.deltafile
 
 
@@ -141,3 +140,116 @@ def test_apply_then_undo_edits():
     assert transformed == "sitting"
     transformed = edits_list.apply(transformed, invert=True)
     assert transformed == "kitten"
+
+
+def test_from_strings():
+    edits_list = EditsList.from_strings("kitten", "sitting")
+    assert edits_list == EditsList(
+        [
+            Edit(op="substitute", old="k", new="s", index=0),
+            Edit(op="substitute", old="e", new="i", index=4),
+            Edit(op="insert", new="g", index=6),
+        ]
+    )
+
+
+def test_from_strings_no_changes():
+    edits_list = EditsList.from_strings("kitten", "kitten")
+    assert edits_list == EditsList([])
+
+
+def test_from_strings_insert_at_beginning():
+    edits_list = EditsList.from_strings("kitten", "skitten")
+    assert edits_list == EditsList(
+        [
+            Edit(op="insert", new="s", index=0),
+        ]
+    )
+
+
+def test_from_strings_no_second_string():
+    edits_list = EditsList.from_strings("kitten")
+    assert edits_list == EditsList(
+        [
+            Edit(op="insert", new="k", index=0),
+            Edit(op="insert", new="i", index=1),
+            Edit(op="insert", new="t", index=2),
+            Edit(op="insert", new="t", index=3),
+            Edit(op="insert", new="e", index=4),
+            Edit(op="insert", new="n", index=5),
+        ]
+    )
+
+
+def test_from_strings_delete_at_end():
+    edits_list = EditsList.from_strings("kitten", "kitte")
+    assert edits_list == EditsList(
+        [
+            Edit(op="delete", old="n", index=5),
+        ]
+    )
+
+
+def test_from_strings_substitute_entire_string():
+    edits_list = EditsList.from_strings("kitten", "puppy")
+    assert edits_list == EditsList(
+        [
+            Edit(op="substitute", old="k", new="p", index=0),
+            Edit(op="substitute", old="i", new="u", index=1),
+            Edit(op="substitute", old="t", new="p", index=2),
+            Edit(op="substitute", old="t", new="p", index=3),
+            Edit(op="substitute", old="e", new="y", index=4),
+            Edit(op="delete", old="n", index=5),
+        ]
+    )
+
+
+def test_from_strings_substitute_multiple_times():
+    edits_list = EditsList.from_strings("kitten", "kippen")
+    assert edits_list == EditsList(
+        [
+            Edit(op="substitute", old="t", new="p", index=2),
+            Edit(op="substitute", old="t", new="p", index=3),
+        ]
+    )
+
+
+def test_from_strings_delete_multiple_times():
+    edits_list = EditsList.from_strings("kitten", "kien")
+    assert edits_list == EditsList(
+        [
+            Edit(op="delete", old="t", index=2),
+            Edit(
+                op="delete", old="t", index=3
+            ),  # BUG: should this be 2? Depends if the edit list expects "realtime" edits.
+        ]
+    )
+
+
+def test_from_strings_insert_multiple_times():
+    edits_list = EditsList.from_strings("kitten", "skitteng")
+    assert edits_list == EditsList(
+        [
+            Edit(op="insert", new="s", index=0),
+            Edit(op="insert", new="g", index=7),
+        ]
+    )
+
+
+def test_from_strings_substitute_and_delete():
+    edits_list = EditsList.from_strings("kitten", "kipte")
+    assert edits_list == EditsList(
+        [
+            Edit(op="substitute", old="t", new="p", index=2),
+            Edit(op="delete", old="n", index=5),
+        ]
+    )
+
+
+def test_from_strings_delete_and_insert():
+    edits_list = EditsList.from_strings("kitten", "kipten")
+    assert edits_list == EditsList(
+        [
+            Edit(op="substitute", old="t", new="p", index=2),
+        ]
+    )

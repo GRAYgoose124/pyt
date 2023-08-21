@@ -21,6 +21,20 @@ class EditsList(list[Edit]):
     def distance(self):
         return len(self)
 
+    @classmethod
+    def from_strings(cls, s1: str, s2: str = None):
+        """Create an EditsList from two strings"""
+        if s2 is None:
+            s2 = s1
+            s1 = ""
+
+        obj = cls()
+        print(s1, s2, obj)
+        obj.extend(cls.compute(s1, s2))
+        print(obj)
+
+        return obj
+
     def apply(self, original: str, invert: bool = False):
         """
         >>> apply_leven_edits("kitten", [Edit(operation='substitute', old='k', new='s', index=0), Edit(operation='substitute', old='e', new='i', index=4), Edit(operation='insert', old='', new='g', index=7)])
@@ -47,7 +61,7 @@ class EditsList(list[Edit]):
         return "".join(transformed)
 
     @staticmethod
-    def calculate_edits(s1: str, s2: str) -> list[Edit]:
+    def compute(s1: str, s2: str) -> iter:
         """Calculate the edits needed to transform s1 into s2 using the levenshtein distance algorithm.
 
         Args:
@@ -69,9 +83,9 @@ class EditsList(list[Edit]):
         for i in range(m + 1):
             for j in range(n + 1):
                 if i == 0:
-                    dp[i][j] = (j, None, "insert", j)
+                    dp[i][j] = (j, None, "insert", j - 1)
                 elif j == 0:
-                    dp[i][j] = (i, None, "delete", i)
+                    dp[i][j] = (i, None, "delete", i - 1)
                 elif s1[i - 1] == s2[j - 1]:
                     dp[i][j] = (dp[i - 1][j - 1][0], None, "no_change", i - 1)
                 else:
@@ -82,9 +96,9 @@ class EditsList(list[Edit]):
                     min_cost = min(insert_cost, delete_cost, substitute_cost)
 
                     if min_cost == insert_cost:
-                        dp[i][j] = (min_cost, None, "insert", j)
+                        dp[i][j] = (min_cost, None, "insert", j - 1)
                     elif min_cost == delete_cost:
-                        dp[i][j] = (min_cost, None, "delete", i)
+                        dp[i][j] = (min_cost, None, "delete", i - 1)
                     else:
                         dp[i][j] = (min_cost, s1[i - 1], "substitute", i - 1)
 
@@ -113,4 +127,4 @@ class EditsList(list[Edit]):
                 i -= 1
                 j -= 1
 
-        return list(reversed(edits))
+        return reversed(edits)
