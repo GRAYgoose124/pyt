@@ -61,72 +61,10 @@ class DeltaFile:
 
     def update(self):
         """If the file has changed, create a new revision"""
-        if self._actual_file.exists():
-            if self.last_revision is None:
-                rev = Revision(None, EditsList.from_file(self._actual_file))
-            elif self.current_sha != self.last_revision.sha:
-                rev = Revision(
-                    self.current_sha,
-                    EditsList.after(self._actual_file, self.last_revision.edits),
-                )
-
-            log.debug("Appending revision, %s", self.revisions)
-            self._revisions.append(rev)
+        pass
 
     def revert(self, sha: Optional[str] = None) -> "DeltaFile":
-        """Revert to a revision"""
-        # TODO: This and build_from_final_revision_file are very similar, maybe abstract out the common code.
-        if sha is None:
-            sha = self.last_revision.sha
-
-        if sha is None:
-            raise ValueError("No revisions to revert to")
-
-        closest_sha = most_matching_sha(self.get_all_revision_shas(), sha)
-        if closest_sha is None:
-            raise ValueError("No revisions to revert to")
-        sha = closest_sha
-
-        # To load a revision, we need to load the prior revision file by getting the sha from the current revision file
-        # then undo the edits from the prior revision file
-        current = self.current_revision_file
-        current = json.load(current.open("r"))
-        if current is None:
-            raise ValueError("No revisions to revert to")
-
-        prior = self.get_revision_file(current["last_sha"])
-        if prior is None:
-            raise ValueError("No revisions to revert to")
-
-        last_prior = None
-        last_sha = current["last_sha"]
-        while (
-            prior is not None
-            and prior.exists()
-            and self.get_sha_from_revision_filename(prior) != sha
-        ):
-            last_prior = prior
-            prior = json.load(prior.open("r"))
-            last_sha = prior["last_sha"] if prior["last_sha"] is not None else last_sha
-            prior = self.get_revision_file(last_sha)
-
-        self = self.build_from_final_revision_file(self.get_revision_file(last_sha))
-
-        with self._actual_file.open("w") as f:
-            f.writelines(self.last_revision.edits.apply())
-
-        return self
-
-    def get_revision_file(self, sha: str, create: bool = False) -> Optional[Path]:
-        """Get the revision file"""
-        file = self._actual_file.parent.resolve() / ".pyt" / f"{sha}.json"
-        if file.exists():
-            return file
-        elif create:
-            file.touch()
-            return file
-        else:
-            return None
+        pass
 
     @staticmethod
     def get_sha_from_revision_filename(file: Path):
@@ -161,6 +99,11 @@ class DeltaFile:
                 rev,
                 f,
             )
+
+    def save(self):
+        """Update and dump the revisions"""
+        self.update()
+        self.dump_revision()
 
     def revisions_to_str(self, sha: str):
         """Apply all revisions up to a certain sha"""
@@ -201,35 +144,6 @@ class DeltaFile:
     def revisions(self):
         """Get the revisions"""
         return self._revisions
-
-    def save(self):
-        """Update and dump the revisions"""
-        self.update()
-        self.dump_revision()
-
-    @staticmethod
-    def build_from_final_revision_file(rev_file: Path):
-        """Load the revisions from a file"""
-        obj = DeltaFile()
-        rdict = json.load(rev_file.open("r"))
-        obj._actual_file = Path(rdict["path"])
-
-        rev_file = obj.get_revision_file(rdict["last_sha"])
-        while rev_file is not None and rev_file.exists():
-            rev_file = obj.get_revision_file(rdict["last_sha"])
-            rev = Revision(
-                rdict["revision"][0],
-                EditsList(rdict["revision"][1]),
-            )
-            obj._revisions.append(rev)
-
-            if rev_file is not None:
-                rdict = json.load(rev_file.open("r"))
-            else:
-                break
-
-        obj._original = rdict["current"]
-        return obj
 
     def __repr__(self) -> str:
         return f"<DeltaFile {self._actual_file}>"
