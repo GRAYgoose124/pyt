@@ -61,7 +61,7 @@ class EditsList(list[Edit]):
         return "".join(transformed)
 
     @staticmethod
-    def compute(s1: str, s2: str) -> iter:
+    def compute(s1: str, s2: str, ascls=True) -> iter:
         """Calculate the edits needed to transform s1 into s2 using the levenshtein distance algorithm.
 
         Args:
@@ -127,4 +127,10 @@ class EditsList(list[Edit]):
                 i -= 1
                 j -= 1
 
-        return reversed(edits)
+        r = reversed(edits)
+        if ascls:
+            el = EditsList()
+            el.extend(r)
+            return el
+        else:
+            return r

@@ -253,3 +253,13 @@ def test_from_strings_delete_and_insert():
             Edit(op="substitute", old="t", new="p", index=2),
         ]
     )
+
+
+def test_from_strings_insert_and_delete():
+    edits_list = EditsList.from_strings("kitten", "kitean")
+    assert edits_list == EditsList(
+        [
+            Edit(op="delete", old="t", index=2),
+            Edit(op="insert", new="a", index=4),
+        ]
+    )
