@@ -7,6 +7,7 @@ import logging
 from typing import NamedTuple, Optional
 
 from .editslist import EditsList
+from .utilities import most_matching_sha
 
 log = logging.getLogger(__name__)
 
@@ -16,34 +17,6 @@ class Revision(NamedTuple):
 
     sha: Optional[str]
     edits: EditsList
-
-
-def most_matching_sha(shas: list[str], sha: str):
-    """Matches the most similar sha by number of matching leading characters.
-    If less than 3 characters match for any sha, None is returned.
-
-    Such as:
-    >>> most_matching_sha(["abc123", "abc456", "abc789"], "abc456")
-    "abc456"
-    """
-    matching = {}
-    for s in shas:
-        if s is None:
-            continue
-        matching[s] = 0
-        for i in range(len(s)):
-            if s[i] == sha[i]:
-                matching[s] += 1
-            else:
-                break
-
-    max_matching = max(matching.values())
-    if max_matching < 3:
-        return None
-
-    for s, v in matching.items():
-        if v == max_matching:
-            return s
 
 
 class DeltaFile:
@@ -65,6 +38,13 @@ class DeltaFile:
 
     def revert(self, sha: Optional[str] = None) -> "DeltaFile":
         pass
+
+    def get_revision_file(self, sha: str, create: bool = False):
+        """Get the revision file for a sha"""
+        file = Path(".pyt") / sha
+        if not file.exists() and create:
+            file.touch()
+        return file
 
     @staticmethod
     def get_sha_from_revision_filename(file: Path):

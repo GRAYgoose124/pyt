@@ -14,17 +14,22 @@ from tensorflow.keras.layers import (
     Conv1D,
     MaxPooling1D,
     GlobalMaxPooling1D,
+    Embedding,
 )
 from tensorflow.keras.models import Model
 
 MAX_STRING_LENGTH = 100  # Just a placeholder; set it to your value
-CHAR_DICT_SIZE = 26  # Assuming only lowercase alphabets; change accordingly
 
 
 def create_model():
     # Base Network
     def create_base_network():
-        input_seq = Input(shape=(MAX_STRING_LENGTH, CHAR_DICT_SIZE))
+        input_seq = Input(shape=(MAX_STRING_LENGTH, 1))
+
+        # Embedding Layer: Convert ordinal to dense vectors of size 32 (you can adjust this dimension)
+        embedded_seq = Embedding(
+            input_dim=1, output_dim=32, input_length=MAX_STRING_LENGTH
+        )(input_seq)
 
         # Bidirectional LSTM
         bi_lstm = Bidirectional(LSTM(128, return_sequences=True))(input_seq)
@@ -40,8 +45,8 @@ def create_model():
 
     base_network = create_base_network()
 
-    input_string1 = Input(shape=(MAX_STRING_LENGTH, CHAR_DICT_SIZE))
-    input_string2 = Input(shape=(MAX_STRING_LENGTH, CHAR_DICT_SIZE))
+    input_string1 = Input(shape=(MAX_STRING_LENGTH, 1))
+    input_string2 = Input(shape=(MAX_STRING_LENGTH, 1))
 
     encoded_string1 = base_network(input_string1)
     encoded_string2 = base_network(input_string2)
