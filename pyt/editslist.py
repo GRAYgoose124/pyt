@@ -3,7 +3,7 @@ import pickle
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
-
+from codecs import encode, decode
 
 Edit = namedtuple("Edit", ["op", "index", "old", "new"])
 
@@ -134,9 +134,9 @@ class EditsList(list[Edit]):
 
     def pickle(self):
         """Pickle the editslist"""
-        return pickle.dumps(self)
+        return str(pickle.dumps(self))
 
     @classmethod
     def unpickle(cls, data):
         """Unpickle the editslist"""
-        return pickle.loads(data)
+        return pickle.loads(eval(data))
