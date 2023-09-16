@@ -65,14 +65,19 @@ class Revision:
     def revert(self, reversion: Optional["Revision"] = None):
         """Revert to the previous revision"""
         original = ""
-        revisions = []
         first_revision = reversion or self
+        revisions = [first_revision]
         while first_revision.previous_sha:
+            if first_revision._root is None:
+                break
             first_revision = Revision.load(
                 first_revision._root / first_revision.previous_sha
             )
             revisions.append(first_revision)
 
+        log.debug(
+            f"Reverting {self.sha:.6} to {self.previous_sha or '_root_':.6}, about to apply {len(revisions)} edits"
+        )
         while revisions:
             rev = revisions.pop()
             original = rev.edits.apply(original)
@@ -116,6 +121,8 @@ class Revision:
 
 
 def main():
+    # ogging.basicConfig(level=logging.INFO)
+
     root = Path(".") / ".pyt"
     if root.exists():
         shutil.rmtree(root)
@@ -123,20 +130,31 @@ def main():
 
     test_file = Path("test.txt")
     test_file.write_text("Hello, World!")
-
     revision = Revision.from_filename(test_file)
     revision.save(root)
+    print("original", test_file.read_text())
 
     test_file.write_text("Hello, World! This is a test")
     revision2 = revision.new()
     revision2.save(root)
+    print("rev2 addition", test_file.read_text())
 
-    print(test_file.read_text())
-    # undo revision2
+    test_file.write_text("Hello, World! This is a test, but with a change")
     revision3 = revision2.new()
     revision3.save(root)
-    test_file.write_text(revision3.revert())
-    print(test_file.read_text())
+    print("rev3 addition", test_file.read_text())
+
+    reversion = revision3.revert(revision)
+    test_file.write_text(reversion)
+    print("revert rev3 to rev1", test_file.read_text())
+
+    print(f"rev3 application only: {revision3.edits.apply('')}")
+
+    reapplication = revision2.edits.apply(reversion)
+    test_file.write_text(reapplication)
+    revision4 = revision3.new()
+    revision4.save(root)
+    print(f"rev4 reapply rev2 to rev3 reversion: {test_file.read_text()}")
 
 
 if __name__ == "__main__":

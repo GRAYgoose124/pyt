@@ -26,9 +26,7 @@ class EditsList(list[Edit]):
             s1 = ""
 
         obj = cls()
-        print(s1, s2, obj)
         obj.extend(cls.compute(s1, s2))
-        print(obj)
 
         return obj
 
