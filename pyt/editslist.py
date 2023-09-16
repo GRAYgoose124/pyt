@@ -1,14 +1,11 @@
+from collections import namedtuple
+import pickle
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 
-@dataclass
-class Edit:
-    op: Literal["insert", "delete", "substitute"]
-    index: int
-    old: str = ""
-    new: str = ""
+Edit = namedtuple("Edit", ["op", "index", "old", "new"])
 
 
 class EditsList(list[Edit]):
@@ -107,10 +104,10 @@ class EditsList(list[Edit]):
         while i > 0 or j > 0:
             cost, replaced_char, operation, index = dp[i][j]
             if operation == "insert":
-                edits.append(Edit(op="insert", index=index, new=s2[j - 1]))
+                edits.append(Edit(op="insert", index=index, new=s2[j - 1], old=""))
                 j -= 1
             elif operation == "delete":
-                edits.append(Edit(op="delete", index=index, old=s1[i - 1]))
+                edits.append(Edit(op="delete", index=index, new="", old=s1[i - 1]))
                 i -= 1
             elif operation == "substitute":
                 edits.append(
@@ -134,3 +131,12 @@ class EditsList(list[Edit]):
             return el
         else:
             return r
+
+    def pickle(self):
+        """Pickle the editslist"""
+        return pickle.dumps(self)
+
+    @classmethod
+    def unpickle(cls, data):
+        """Unpickle the editslist"""
+        return pickle.loads(data)

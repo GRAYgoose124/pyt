@@ -1,10 +1,11 @@
+from dataclasses import dataclass
 import hashlib
-from io import StringIO
 import json
 from pathlib import Path
 import shutil
 import logging
-from typing import NamedTuple, Optional
+from typing import Optional
+from pathlib import Path
 
 from .editslist import EditsList
 from .utilities import most_matching_sha
@@ -12,60 +13,93 @@ from .utilities import most_matching_sha
 log = logging.getLogger(__name__)
 
 
-class Revision(NamedTuple):
+@dataclass
+class Revision:
     """A revision"""
 
-    sha: Optional[str]
+    sha: int
+    previous_sha: Optional[int]
     edits: EditsList
+    path: Path
 
     @property
     def asdict(self):
-        return {"sha": self.sha, "edits": self.edits}
-    
-    def save(self, root: Path):
-        """Save the revisions to a file"""
-        payload = json.dumps(self.asdict, separators=(",", ":"))
-        payload_sha = hashlib.sha256(payload.encode()).hexdigest()
+        return {
+            "sha": self.sha,
+            "edits": str(self.edits.pickle()),
+            "previous_sha": self.previous_sha,
+            "path": str(self.path),
+        }
 
-        file = root / ".pyt" / payload_sha
-        with file.open("w") as f:
-            f.write(payload)
-
-        return payload_sha
-    
     @classmethod
     def load(cls, file: Path):
         """Load the revision from a file"""
         with file.open("r") as f:
             data = json.loads(f.read())
 
+        data["path"] = Path(data["path"])
+        data["edits"] = EditsList.unpickle(data["edits"])
+
         return cls(**data)
 
+    def save(self, root: Path = Path(".")):
+        """Save the revisions to a file"""
+        payload = json.dumps(self.asdict, separators=(",", ":"))
 
-class RevisionedFile:
-    def __init__(self, path: Path):
-        self._actual_file = path
-        self._revisions_file = Path(".pyt") / path.name
+        with (root / self.sha).open("w") as f:
+            f.write(payload)
 
-    def update(self):
-        """If the watched file has changed, create a new revision"""
-        pass
+    def new(self, root: Path = Path(".")):
+        """Create a new revision"""
+        this_revision = root / self.sha
 
-    def revert(self, sha: Optional[str] = None) -> "RevisionedFile":
-        """Revert the file to a particular revision"""
-        pass
+        if not this_revision.exists():
+            raise FileNotFoundError(
+                f"Cant find revision {self.sha:.8} to apply edits to."
+            )
 
-    def get_revision_file(self, root: Path, sha: str, create: bool = False):
-        """Get the revision file for a sha"""
-        file = root / ".pyt" / sha
+        return Revision.from_filename(self.path, self)
+
+    @classmethod
+    def from_filename(cls, file: Path, previous_revision: Optional["Revision"] = None):
+        """Create a revision from a filename"""
         if not file.exists():
-            if create:
-                file.touch()
-            else:
-                return None
-            
-        
-        return file
-    
-    def save_revision(self):
-        """Saves the current file as a new revision"""
+            raise FileNotFoundError(f"File {file} does not exist")
+
+        with file.open("r") as f:
+            original = f.read()
+
+        sha = hashlib.sha256(original.encode()).hexdigest()
+
+        if previous_revision:
+            return cls(
+                sha,
+                previous_revision.sha,
+                EditsList.from_strings(
+                    previous_revision.edits.apply(original, invert=True), original
+                ),
+                file,
+            )
+        else:
+            return cls(sha, None, EditsList.from_strings("", original), file)
+
+
+def main():
+    root = Path(".") / ".pyt"
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir()
+
+    test_file = Path("test.txt")
+    test_file.write_text("Hello, World!")
+
+    revision = Revision.from_filename(test_file)
+    revision.save(root)
+
+    test_file.write_text("Hello, World! This is a test")
+    revision2 = revision.new(root)
+    revision2.save(root)
+
+
+if __name__ == "__main__":
+    main()

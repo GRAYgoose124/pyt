@@ -18,4 +18,3 @@ build-backend = "poetry.core.masonry.api"
 pyt = "pyt:main"
 deltafile = "pyt.deltafile:main"
 revfile = "pyt.revfile:main"
-```
